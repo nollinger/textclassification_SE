@@ -69,11 +69,13 @@ stopword = text_file.read().split()
 text_file.close()
 
 # tokenize data: (1, 1) means only unigrams, (1, 2) means unigrams and bigrams, and (2, 2) means only bigrams
-vects = CountVectorizer(stop_words=stopword, ngram_range=(1, 1)) 
+vects_NB = CountVectorizer(stop_words=stopword, ngram_range=(1, 1), max_df=0.5, min_df=0.0) 
+vects_SVM = CountVectorizer(stop_words=stopword, ngram_range=(1, 1), min_df=0.01, max_df=0.5) 
+vects_KNN = CountVectorizer(stop_words=stopword, ngram_range=(1, 1), min_df=0.01, max_df=0.8) 
 
-tf_idf = TfidfTransformer(use_idf = False) #tf idf 
-
-
+tf_idf_NB = TfidfTransformer(use_idf = True) #tf idf 
+tf_idf_SVM = TfidfTransformer(use_idf = False)
+tf_idf_KNN = TfidfTransformer(use_idf = True)
 '''
 
 2. import of the training data
@@ -129,7 +131,19 @@ numpy_array = data.as_matrix() #create data matrix
 X = numpy_array[:,0] #text
 Y = numpy_array[:,1] #classifier
 
+#train_test_split
+from sklearn.model_selection import train_test_split
+X_train, X_test, Y_train, Y_test = train_test_split(
+X, Y, train_size = 200, random_state=7)
 
+'''
+i = 0
+for x in Y_train:
+    if x == 'SD+':
+        i +=1
+
+i       
+'''    
 
 '''
 
@@ -141,7 +155,9 @@ Y = numpy_array[:,1] #classifier
 
 from sklearn.pipeline import Pipeline
 from sklearn.naive_bayes import MultinomialNB #import of classifiers
-from sklearn.linear_model import SGDClassifier
+from sklearn.linear_model import SGDClassifier #sgd: stochastic gradient descent learning
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier #multy layer perceptron (backpropagation)
 
 def classifier(classifier):
     
@@ -152,24 +168,72 @@ def classifier(classifier):
     '''
     
     if classifier == 'NB':
-        classifier = MultinomialNB(alpha=0.001)
+        classifier = MultinomialNB(alpha=0.01)
     elif classifier == 'SVM':
         classifier = SGDClassifier(loss='hinge', penalty='l2',
-                                            alpha=1e-3, max_iter=10, random_state=42)
+                                            alpha=0.001, random_state=42)
+    elif classifier == 'KNN':
+        classifier = KNeighborsClassifier()
+   
+    elif classifier == 'MLP':
+        classifier = MLPClassifier()
     
     return classifier
     
 
-text_clf = Pipeline([('vect', vects),
- ('tfidf', tf_idf),
- ('clf', classifier('NB')) # choose classifier
+text_clf_SVM = Pipeline([('vect', vects_SVM),
+ ('tfidf', tf_idf_SVM),
+ ('clf', classifier('SVM')) # choose classifier
 ])
 
+text_clf_NB = Pipeline([('vect', vects_NB),
+ ('tfidf', tf_idf_NB),
+ ('clf', classifier('NB')) # choose classifier
+])
+  
+text_clf_KNN = Pipeline([('vect', vects_KNN),
+ ('tfidf', tf_idf_KNN),
+ ('clf', classifier('KNN')) # choose classifier
+])
+    
+text_clf_MLP = Pipeline([('vect', vects),
+ ('tfidf', tf_idf_KNN),
+ ('clf', classifier('MLP')) # choose classifier
+])
+
+  
+    
+'''
+
+5. GridSearch cross validation (finding best parameters)
+
+
+'''
+
+
+from sklearn.model_selection import GridSearchCV
+parameters = {'vect__ngram_range': [(1, 1), (1, 2)],
+                'vect__max_df': (0.2, 0.5, 0.8, 1.0),
+                'vect__min_df': (0.0, 0.01, 0.02, 1),
+              'tfidf__use_idf': (True, False),
+              #'clf__alpha': (1e-2, 1e-3)
+    
+              }
+
+gs_clf = GridSearchCV(text_clf_KNN, parameters, n_jobs=-1, scoring='f1_macro')
+gs_clf = gs_clf.fit(X_train, Y_train)
+
+gs_clf.best_score_
+gs_clf.best_params_ 
+    
+
+text_clf_SVM.get_params().keys()
+    
     
     
 '''
 
-5. Using cross validation
+6. Using cross validation
 
 '''
 
@@ -180,21 +244,48 @@ from sklearn import metrics
 from sklearn.model_selection import ShuffleSplit
 
 scoring = ['precision_macro', 'recall_macro', 'f1_macro']
-cv = ShuffleSplit(n_splits=50, test_size=0.2, random_state=0) #validation splits and test size
-scores = cross_validate(text_clf, X, Y, cv=cv, scoring=scoring, return_estimator=False)
+cv_SVM = ShuffleSplit(n_splits= 10, test_size=0.2, random_state=0)
+cv_NB = ShuffleSplit(n_splits= 100, test_size=0.2, random_state=0) #validation splits and test size
+cv_KNN = ShuffleSplit(n_splits= 100, test_size=0.2, random_state=0)
+cv_MLP = ShuffleSplit(n_splits= 3, test_size=0.2, random_state=0)
+scores_SVM = cross_validate(text_clf_SVM, X_train, Y_train, cv=cv_SVM, scoring=scoring, return_estimator=False)
+scores_NB = cross_validate(text_clf_NB, X_train, Y_train, cv=cv_NB, scoring=scoring, return_estimator=False)
+scores_KNN = cross_validate(text_clf_KNN, X_train, Y_train, cv=cv_KNN, scoring=scoring, return_estimator=False)
+scores_MLP = cross_validate(text_clf_MLP, X_train, Y_train, cv=cv_MLP, scoring=scoring, return_estimator=False)
+
 #sorted(scores.keys())
 
-print('f1-score: ', scores['test_f1_macro'].mean())
-print('precision: ', scores['test_precision_macro'].mean())
-print('recall: ', scores['test_recall_macro'].mean())
+print('\n SVM measures:')
+print('f1-score: ', scores_SVM['test_f1_macro'].mean())
+print('precision: ', scores_SVM['test_precision_macro'].mean())
+print('recall: ', scores_SVM['test_recall_macro'].mean())
 
+
+print('\n NB measures:')
+print('f1-score: ', scores_NB['test_f1_macro'].mean())
+print('precision: ', scores_NB['test_precision_macro'].mean())
+print('recall: ', scores_NB['test_recall_macro'].mean())
+
+print('\n KNN measures:')
+print('f1-score: ', scores_KNN['test_f1_macro'].mean())
+print('precision: ', scores_KNN['test_precision_macro'].mean())
+print('recall: ', scores_KNN['test_recall_macro'].mean())
+
+print('\n MLP measures:')
+print('f1-score: ', scores_MLP['test_f1_macro'].mean())
+print('precision: ', scores_MLP['test_precision_macro'].mean())
+print('recall: ', scores_MLP['test_recall_macro'].mean())
 #text_clf.get_params()
+
+
+
+
 
 
 
 '''
 
-6. learning curve about the effect of different training sizes on validation scores.
+7. learning curve about the effect of different training sizes on validation scores.
 
 
 '''
@@ -211,11 +302,11 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
     
 
 
-    axes[0].set_title(title)
+    axes.set_title(title)
     if ylim is not None:
-        axes[0].set_ylim(*ylim)
-    axes[0].set_xlabel("Training examples")
-    axes[0].set_ylabel("Score")
+        axes.set_ylim(*ylim)
+    axes.set_xlabel("Training examples")
+    axes.set_ylabel("Score")
 
     train_sizes, train_scores, test_scores = \
         learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
@@ -226,28 +317,73 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
     test_scores_mean = np.mean(test_scores, axis=1)
     test_scores_std = np.std(test_scores, axis=1)
     
-    axes[0].grid()
-    axes[0].fill_between(train_sizes, train_scores_mean - train_scores_std,
+    axes.grid()
+    axes.fill_between(train_sizes, train_scores_mean - train_scores_std,
                          train_scores_mean + train_scores_std, alpha=0.1,
                          color="r")
-    axes[0].fill_between(train_sizes, test_scores_mean - test_scores_std,
+    axes.fill_between(train_sizes, test_scores_mean - test_scores_std,
                          test_scores_mean + test_scores_std, alpha=0.1,
                          color="g")
-    axes[0].plot(train_sizes, train_scores_mean, 'o-', color="r",
+    axes.plot(train_sizes, train_scores_mean, 'o-', color="r",
                  label="Training score")
-    axes[0].plot(train_sizes, test_scores_mean, 'o-', color="g",
+    axes.plot(train_sizes, test_scores_mean, 'o-', color="g",
                  label="Cross-validation score")
-    axes[0].legend(loc="best")
+    axes.legend(loc="best")
     
     
     return plt, train_scores_mean, test_scores_mean
 
 
-fig, axes = plt.subplots(3, 2, figsize=(10, 15))
+fig,axes = plt.subplots(1, 3, figsize=(10, 15))
 
-title = "Learning Curves (Naive Bayes)"
+title1 = "Learning Curves (Naive Bayes)"
 
-plot_learning_curve(text_clf, title, X, y=Y, axes=axes[0], ylim=(0.7, 1.01),
-                    cv=cv, n_jobs=3)
+plot_learning_curve(text_clf_NB, title1, X_train, y=Y_train, axes=axes[0], ylim=(0.6, 1.01),
+                    cv=cv_NB, n_jobs=4)
 
+
+title2 = "SVM"
+
+plot_learning_curve(text_clf_SVM, title2, X_train, y=Y_train, axes=axes[1], ylim=(0.6, 1.01),
+                    cv=cv_SVM, n_jobs=4)
+
+title3 = "KNN"
+
+plot_learning_curve(text_clf_KNN, title3, X_train, y=Y_train, axes=axes[2], ylim=(0.6, 1.01),
+                    cv=cv_KNN, n_jobs=4)
+
+title4 = "MLP"
+
+plot_learning_curve(text_clf_MLP, title4, X_train, y=Y_train, axes=axes[3], ylim=(0.6, 1.01),
+                    cv=cv_MLP, n_jobs=4)
 plt.show()
+
+
+
+
+
+
+'''
+
+8. prediction of new cases
+
+'''
+
+
+from sklearn.metrics import f1_score, precision_score, recall_score
+
+pred_NB = text_clf_NB.fit(X_train, Y_train).predict(X_test)
+pred_SVM = text_clf_SVM.fit(X_train, Y_train).predict(X_test)
+pred_KNN = text_clf_KNN.fit(X_train, Y_train).predict(X_test)
+
+print('\nNB_PRECISION: ', precision_score(pred_NB, Y_test, average='macro'))
+print('NB_RECALL: ', recall_score(pred_NB, Y_test, average='macro'))
+print('NB_F1: ', f1_score(pred_NB, Y_test, average='macro'))
+
+print('\nSVM_PRECISION: ', precision_score(pred_SVM, Y_test, average='macro'))
+print('SVM_RECALL: ', recall_score(pred_SVM, Y_test, average='macro'))
+print('SVM_F1: ', f1_score(pred_SVM, Y_test, average='macro'))
+
+print('\nKNN_PRECISION: ', precision_score(pred_KNN, Y_test, average='macro'))
+print('KNN_RECALL: ', recall_score(pred_KNN, Y_test, average='macro'))
+print('KNN_F1: ', f1_score(pred_KNN, Y_test, average='macro'))
