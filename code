@@ -1,5 +1,5 @@
 '''
-@author: noll_richard
+@author: nollr
 '''
 
 
@@ -38,6 +38,7 @@ def remove_umlaut(text):
     tempVar = tempVar.replace('Ã¶', 'oe')
     tempVar = tempVar.replace('Ã¼', 'ue')
     tempVar = tempVar.replace('ã¼', 'ue')
+    tempVar = tempVar.replace('Ãœ', 'ue')
     tempVar = tempVar.replace('Ã¤', 'ae')
     
     return tempVar
@@ -66,16 +67,22 @@ from sklearn.feature_extraction.text import TfidfTransformer
 
 text_file = open("C:\\Users\\nollr\\Desktop\\stop_words_german.txt", "r")
 stopword = text_file.read().split()
+german_stop_words_to_use = []   # List to hold words after conversion
+for word in stopword:
+    german_stop_words_to_use.append(remove_umlaut(word))
 text_file.close()
+stopword.extend(['Sarkoidose', 'Zystische', 'Fibrose', 'Cystische', 'CF', 'ZF', 'Mukoviszidose']) #remove diagnose names
 
 # tokenize data: (1, 1) means only unigrams, (1, 2) means unigrams and bigrams, and (2, 2) means only bigrams
-vects_NB = CountVectorizer(stop_words=stopword, ngram_range=(1, 1), max_df=0.5, min_df=0.0) 
-vects_SVM = CountVectorizer(stop_words=stopword, ngram_range=(1, 1), min_df=0.01, max_df=0.5) 
-vects_KNN = CountVectorizer(stop_words=stopword, ngram_range=(1, 1), min_df=0.01, max_df=0.8) 
+vects_NB = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), max_df=0.5, min_df=0.0) 
+vects_SVM = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), min_df=0.01, max_df=0.5) 
+vects_KNN = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), min_df=0.01, max_df=0.8) 
 
 tf_idf_NB = TfidfTransformer(use_idf = True) #tf idf 
 tf_idf_SVM = TfidfTransformer(use_idf = False)
 tf_idf_KNN = TfidfTransformer(use_idf = True)
+
+
 '''
 
 2. import of the training data
@@ -88,7 +95,7 @@ import os
 import numpy as np
 
 
-training_lst=[] #list with all the training data
+data_lst=[] #list with all the training data
 disease=[] #list with disease names
 
 for root, dirs, files in os.walk("C:\\Users\\nollr\\Desktop\\SD_DATEN\\SEMD"): 
@@ -100,15 +107,42 @@ for root, dirs, files in os.walk("C:\\Users\\nollr\\Desktop\\SD_DATEN\\SEMD"):
           lines= file.read()
           lines = remove_umlaut(lines) #replacing the 'umlaute'
           lines = punctuation_number(lines) #removing punctuation and numbers
-          training_lst.append(lines)
+          data_lst.append(lines)
           if name.startswith('CF+'):
               disease.append('CF+')
           elif name.startswith('SD+'):
               disease.append('SD+')
           file.close()
           
-#print (training_lst[0])
+
+
+print (data_lst[0])
 #print (disease[0:10])
+
+
+# import other diseases for validation later
+          
+other_diseases_text=[]
+disease_other=[]
+
+for root, dirs, files in os.walk("C:\\Users\\nollr\\Desktop\\SD_DATEN\\Others"): 
+   #path with the training-data for both diseases.
+   for name in files:
+      if name.endswith(".txt"): # data is saved as a txt file.
+          file = os.path.join(root, name)
+          file= open(file, "r")
+          lines= file.read()
+          lines = remove_umlaut(lines) #replacing the 'umlaute'
+          lines = punctuation_number(lines) #removing punctuation and numbers
+          other_diseases_text.append(lines)
+          if name.startswith('A'):
+              disease_other.append("No sufficient similarity to trained cases")
+         
+         
+          file.close()
+          
+
+
 
 
 '''
@@ -118,7 +152,7 @@ for root, dirs, files in os.walk("C:\\Users\\nollr\\Desktop\\SD_DATEN\\SEMD"):
 '''
 
 dict = {
-        'text': training_lst,
+        'text': data_lst,
         'SE': disease
         }
 
@@ -144,6 +178,28 @@ for x in Y_train:
 
 i       
 '''    
+
+# other diseases 
+
+dict = {
+        'text': other_diseases_text,
+        'Disease': disease_other
+        }
+
+df = pd.DataFrame(dict)
+df.to_csv('Other_Diseases.csv',index=False,header=True) # store data in csv with two columns.
+#df
+
+data = pd.read_csv('Other_Diseases.csv') #text in column 1, classifier in column 2.
+numpy_array = data.as_matrix() #create data matrix
+X_others = numpy_array[:,0] #text
+Y_others = numpy_array[:,1] #classifier
+
+# combining text data set
+
+test_set = np.concatenate([X_test, X_others])
+
+test_diagnose = np.concatenate([Y_test, Y_others])
 
 '''
 
@@ -216,11 +272,13 @@ parameters = {'vect__ngram_range': [(1, 1), (1, 2)],
                 'vect__max_df': (0.2, 0.5, 0.8, 1.0),
                 'vect__min_df': (0.0, 0.01, 0.02, 1),
               'tfidf__use_idf': (True, False),
-              #'clf__alpha': (1e-2, 1e-3)
+              #'clf__alpha': (1e-2, 1e-3),
+              #'clf__loss':('hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron')
+              
     
               }
 
-gs_clf = GridSearchCV(text_clf_KNN, parameters, n_jobs=-1, scoring='f1_macro')
+gs_clf = GridSearchCV(text_clf_SVM, parameters, n_jobs=-1, scoring='f1_macro')
 gs_clf = gs_clf.fit(X_train, Y_train)
 
 gs_clf.best_score_
@@ -363,6 +421,10 @@ plt.show()
 
 
 
+
+
+
+
 '''
 
 8. prediction of new cases
@@ -371,6 +433,70 @@ plt.show()
 
 
 from sklearn.metrics import f1_score, precision_score, recall_score
+
+def pred_probs(classifier):
+    
+
+    pred_proba = classifier.fit(X_train, Y_train)
+    
+    if classifier == text_clf_SVM:
+        pred_proba = pred_proba.decision_function(test_set)
+    else:
+        pred_proba = pred_proba.predict_proba(test_set)
+    return pred_proba
+
+
+
+def prediction(classifier):
+    
+    new_pred =[]
+    case = 0
+    if classifier == text_clf_SVM:
+        for value in pred_probs(classifier): 
+            if value >= 0.8 or value <= -0.8:
+                   pred = classifier.fit(X_train, Y_train).predict([test_set[case]])
+            else:
+                pred = (["No sufficient similarity to trained cases"])
+            case += 1
+            new_pred.extend(pred)
+    else:
+        for pairs in pred_probs(classifier): 
+            if max(pairs) >= 0.998:
+                   pred = classifier.fit(X_train, Y_train).predict([test_set[case]])
+            elif max(pairs) < 0.998:
+                pred = (["No sufficient similarity to trained cases"])
+            case += 1
+            new_pred.extend(pred)
+            
+    return new_pred
+
+NB = prediction(text_clf_NB)
+SVM = prediction(text_clf_SVM)
+KNN = prediction(text_clf_KNN)
+
+
+text_clf_SVM.fit(X_train, Y_train).decision_function(test_set)
+text_clf_SVM.fit(X_train, Y_train).predict(test_set)
+
+
+
+print('\nNB_PRECISION: ', precision_score(NB, test_diagnose, average='macro'))
+print('NB_RECALL: ', recall_score(NB, test_diagnose, average='macro'))
+print('NB_F1: ', f1_score(NB, test_diagnose, average='macro'))
+
+print('\nSVM_PRECISION: ', precision_score(SVM, test_diagnose, average='macro'))
+print('SVM_RECALL: ', recall_score(SVM, test_diagnose, average='macro'))
+print('SVM_F1: ', f1_score(SVM, test_diagnose, average='macro'))
+
+print('\nKNN_PRECISION: ', precision_score(KNN, test_diagnose, average='macro'))
+print('KNN_RECALL: ', recall_score(KNN, test_diagnose, average='macro'))
+print('KNN_F1: ', f1_score(KNN, test_diagnose, average='macro'))
+
+
+
+
+# prediction validation just for test cases with trained label
+
 
 pred_NB = text_clf_NB.fit(X_train, Y_train).predict(X_test)
 pred_SVM = text_clf_SVM.fit(X_train, Y_train).predict(X_test)
@@ -387,3 +513,9 @@ print('SVM_F1: ', f1_score(pred_SVM, Y_test, average='macro'))
 print('\nKNN_PRECISION: ', precision_score(pred_KNN, Y_test, average='macro'))
 print('KNN_RECALL: ', recall_score(pred_KNN, Y_test, average='macro'))
 print('KNN_F1: ', f1_score(pred_KNN, Y_test, average='macro'))
+
+
+
+
+
+
