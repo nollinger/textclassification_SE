@@ -73,6 +73,8 @@ german_stop_words_to_use = []   # List to hold words after conversion
 for word in stopword:
     german_stop_words_to_use.append(remove_umlaut(word))
 text_file.close()
+
+# !!! option to remove diagnose information from text !!!
 #german_stop_words_to_use.extend(['sarkoidose', 'zystische', 'fibrose', 'cystische', 'cv', 'zf', 'mukoviszidose']) #remove diagnose names
 
 # tokenize data: (1, 1) means only unigrams, (1, 2) means unigrams and bigrams, and (2, 2) means only bigrams
