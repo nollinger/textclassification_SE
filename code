@@ -240,7 +240,7 @@ def classifier(classifier):
         classifier = KNeighborsClassifier()
    
     elif classifier == 'MLP':
-        classifier = MLPClassifier(max_iter=100,learning_rate='adaptive', activation='tanh', 'hidden_layer_sizes': (100, 100, 100),  alpha=0.001 )
+        classifier = MLPClassifier(max_iter=100,learning_rate='adaptive', activation='relu', hidden_layer_sizes= (100, 100, 100),  alpha=0.001 )
     
     return classifier
     
@@ -353,7 +353,7 @@ print('\n MLP measures:')
 print('f1-score: ', scores_MLP['test_f1_macro'].mean())
 print('precision: ', scores_MLP['test_precision_macro'].mean())
 print('recall: ', scores_MLP['test_recall_macro'].mean())
-#text_clf.get_params()
+
 
 
 
