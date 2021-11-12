@@ -87,15 +87,14 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from nltk.corpus import stopwords
 german_stop_words = stopwords.words('german')
 
-german_stop_words_to_use = []   # List to hold words after conversion
-for word in german_stop_words:
-    german_stop_words_to_use.append(remove_umlaut(word))
-
-
 # !!! option to remove diagnose information !!!
 german_stop_words_to_use.extend(['sarkoidose', 'zystische',
                                 'fibrose', 'cystische', 'cf', 'zf', 'mukoviszidose', 'morbus', 'boeck']) #remove diagnose names
 
+german_stop_words_to_use = []   # List to hold words after conversion
+for word in german_stop_words:
+    german_stop_words_to_use.append(remove_umlaut(word))
+    
 # tokenize data: (1, 1) means only unigrams, (1, 2) means unigrams and bigrams, and (2, 2) means only bigrams
 vects_SVM = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), min_df=0.01, max_df=0.5)  
 vects_NB = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), max_df=0.5, min_df=0.0) 
