@@ -1,5 +1,5 @@
 '''
-@author: nollr
+@author: nollr_16.12.21
 '''
 
 
@@ -87,14 +87,15 @@ from sklearn.feature_extraction.text import TfidfTransformer
 from nltk.corpus import stopwords
 german_stop_words = stopwords.words('german')
 
-# !!! option to remove diagnose information !!!
-german_stop_words_to_use.extend(['sarkoidose', 'zystische',
-                                'fibrose', 'cystische', 'cf', 'zf', 'mukoviszidose', 'morbus', 'boeck']) #remove diagnose names
-
 german_stop_words_to_use = []   # List to hold words after conversion
 for word in german_stop_words:
     german_stop_words_to_use.append(remove_umlaut(word))
-    
+
+
+# !!! option to remove diagnose information !!!
+german_stop_words_to_use.extend(['sarkoidose', 'zystische',
+                            'fibrose', 'cystische', 'cf', 'zf', 'mukoviszidose', 'morbus', 'boeck']) #remove diagnose names
+
 # tokenize data: (1, 1) means only unigrams, (1, 2) means unigrams and bigrams, and (2, 2) means only bigrams
 vects_SVM = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), min_df=0.01, max_df=0.5)  
 vects_NB = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), max_df=0.5, min_df=0.0) 
@@ -142,7 +143,7 @@ for root, dirs, files in os.walk("C:\\Users\\nollr\\Desktop\\SD_DATEN\\SEMD"):
           
 
 
-print (data_lst[0])
+#print (data_lst[0])
 #print (disease[0:10])
 
 
@@ -191,19 +192,13 @@ se_numpy_array = data1.as_matrix() #create data matrix
 X = se_numpy_array[:,0] #text
 Y = se_numpy_array[:,1] #classifier
 
+
 #train_test_split
 from sklearn.model_selection import train_test_split
 X_train, X_test, Y_train, Y_test = train_test_split(
 X, Y, train_size = 200, random_state=7)
 
-'''
-i = 0
-for x in Y_train:
-    if x == 'D86':
-        i +=1
-
-i       
-'''    
+   
 
 # other diseases 
 
@@ -229,8 +224,8 @@ test_diagnose = np.concatenate([Y_test, Y_others])
 
 
 # shape of trainingdata
-word_count_vector=vects_SVM.fit_transform(X_train)
-word_count_vector.shape # (200, 7821) 200 documents with 7821 unique words
+#word_count_vector=vects_MLP.fit_transform(X_train) # switch MLP to SVM, NB or KNN to get the other shapes
+#word_count_vector.shape # (200, 7821) 200 documents with 7821 unique words
 
 
 '''
@@ -246,6 +241,7 @@ from sklearn.naive_bayes import MultinomialNB #import of classifiers
 from sklearn.linear_model import SGDClassifier #sgd: stochastic gradient descent learning
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier #multy layer perceptron (backpropagation)
+from sklearn.calibration import CalibratedClassifierCV
 
 def classifier(classifier):
     
@@ -261,6 +257,7 @@ def classifier(classifier):
     elif classifier == 'SVM':
         classifier = SGDClassifier(loss='hinge', penalty='l2',
                                             alpha=0.001, random_state=42)
+        classifier= CalibratedClassifierCV(classifier)
     elif classifier == 'KNN':
         classifier = KNeighborsClassifier(n_neighbors=5)
    
@@ -307,13 +304,13 @@ parameters = {
                 'vect__max_df': (0.2, 0.5, 0.8, 1.0),
                 'vect__min_df': (0.0, 0.01, 0.02, 1),
               'tfidf__use_idf': (True, False),
-              #'clf__alpha': (1e-2, 1e-3, 1e-5, 0.05),
+              'clf__alpha': (1e-2, 1e-3, 1e-5, 0.05),
               #'clf__loss':('hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron')
               #'clf__hidden_layer_sizes': [(100,100,100), (100,200,100), (100,)],
                 #'clf__solver': ['sgd', 'adam'],
                # 'clf__learning_rate': ['constant','adaptive'],
                # 'clf__activation': ['tanh', 'relu'],
-               'clf__n_neighbors':(12, 15, 20, 25)
+               #'clf__n_neighbors':(12, 15, 20, 25)
 }
 
 
@@ -343,15 +340,13 @@ gridsearch(text_clf_MLP)
 
 
 from sklearn.model_selection import cross_validate
-from sklearn.metrics import recall_score
-from sklearn import metrics
 from sklearn.model_selection import ShuffleSplit
 
-scoring = ['precision_macro', 'recall_macro', 'f1_macro']
-cv_SVM = ShuffleSplit(n_splits= 10, test_size=0.2, random_state=0)
-cv_NB = ShuffleSplit(n_splits= 100, test_size=0.2, random_state=0) #validation splits and test size
+scoring = ['precision_macro', 'recall_macro']
+cv_SVM = ShuffleSplit(n_splits= 100, test_size=0.2, random_state=0) #validation splits and test size
+cv_NB = ShuffleSplit(n_splits= 100, test_size=0.2, random_state=0) 
 cv_KNN = ShuffleSplit(n_splits= 100, test_size=0.2, random_state=0)
-cv_MLP = ShuffleSplit(n_splits= 3, test_size=0.2, random_state=0)
+cv_MLP = ShuffleSplit(n_splits= 100, test_size=0.2, random_state=0)
 scores_SVM = cross_validate(text_clf_SVM, X_train, Y_train, cv=cv_SVM, scoring=scoring, return_estimator=False)
 scores_NB = cross_validate(text_clf_NB, X_train, Y_train, cv=cv_NB, scoring=scoring, return_estimator=False)
 scores_KNN = cross_validate(text_clf_KNN, X_train, Y_train, cv=cv_KNN, scoring=scoring, return_estimator=False)
@@ -359,28 +354,69 @@ scores_MLP = cross_validate(text_clf_MLP, X_train, Y_train, cv=cv_MLP, scoring=s
 
 #sorted(scores.keys())
 
+f1_score_SVM = (2*scores_SVM['test_precision_macro'].mean()*scores_SVM['test_recall_macro'].mean())/(scores_SVM['test_precision_macro'].mean()+scores_SVM['test_recall_macro'].mean())
+f1_score_NB = (2*scores_NB['test_precision_macro'].mean()*scores_NB['test_recall_macro'].mean())/(scores_NB['test_precision_macro'].mean()+scores_NB['test_recall_macro'].mean())
+f1_score_KNN = (2*scores_KNN['test_precision_macro'].mean()*scores_KNN['test_recall_macro'].mean())/(scores_KNN['test_precision_macro'].mean()+scores_KNN['test_recall_macro'].mean())
+f1_score_MLP = (2*scores_MLP['test_precision_macro'].mean()*scores_MLP['test_recall_macro'].mean())/(scores_MLP['test_precision_macro'].mean()+scores_MLP['test_recall_macro'].mean())
+
 
 
 print('\n SVM measures:')
-print('f1-score: ', scores_SVM['test_f1_macro'].mean())
+
+print('f1-score: ', f1_score_SVM)
 print('precision: ', scores_SVM['test_precision_macro'].mean())
 print('recall: ', scores_SVM['test_recall_macro'].mean())
 
 print('\n NB measures:')
-print('f1-score: ', scores_NB['test_f1_macro'].mean())
+
+print('f1-score: ', f1_score_NB)
 print('precision: ', scores_NB['test_precision_macro'].mean())
 print('recall: ', scores_NB['test_recall_macro'].mean())
 
 print('\n KNN measures:')
-print('f1-score: ', scores_KNN['test_f1_macro'].mean())
+
+print('f1-score: ', f1_score_KNN)
 print('precision: ', scores_KNN['test_precision_macro'].mean())
 print('recall: ', scores_KNN['test_recall_macro'].mean())
 
 print('\n MLP measures:')
-print('f1-score: ', scores_MLP['test_f1_macro'].mean())
+
+print('f1-score: ', f1_score_MLP)
 print('precision: ', scores_MLP['test_precision_macro'].mean())
 print('recall: ', scores_MLP['test_recall_macro'].mean())
 
+
+
+# boxplot 
+import matplotlib.pyplot as plt 
+
+f1_SVM = [(2*x*y)/(x+y) for x,y in zip(scores_SVM['test_precision_macro'],scores_SVM['test_recall_macro'])]
+f1_NB = [(2*x*y)/(x+y) for x,y in zip(scores_NB['test_precision_macro'],scores_NB['test_recall_macro'])]
+f1_KNN = [(2*x*y)/(x+y) for x,y in zip(scores_KNN['test_precision_macro'],scores_KNN['test_recall_macro'])]
+f1_MLP = [(2*x*y)/(x+y) for x,y in zip(scores_MLP['test_precision_macro'],scores_MLP['test_recall_macro'])]
+
+results, names = [f1_SVM, f1_NB,f1_KNN,f1_MLP],["SVM", "NB", "KNN", "MLP"]
+
+white_diamond = {"markerfacecolor":'w', "marker":'D'}
+bp = plt.boxplot(results, labels=names, showmeans=True, patch_artist = True, flierprops=white_diamond, notch = True, meanline = True)
+colors = ['#00BFFF', '#FF4040',  
+          '#FFFF10', '#F0FFF0'] 
+for patch, color in zip(bp['boxes'], colors): 
+    patch.set_facecolor(color) 
+    
+for median in bp['medians']: 
+    median.set(color ='black', 
+               linewidth = 3) 
+
+for mean in bp['means']:
+    mean.set(linewidth = 6, linestyle =":")
+
+plt.tick_params(axis='x', labelsize=30)
+plt.tick_params(axis='y', labelsize=30)
+plt.xlabel("Klassifikator", fontsize=40)
+plt.ylabel("F1-Score", fontsize=40)  
+
+plt.show()
 
 
 
@@ -393,7 +429,8 @@ print('recall: ', scores_MLP['test_recall_macro'].mean())
 
 
 
-import matplotlib.pyplot as plt 
+
+
 from sklearn.model_selection import learning_curve
 
 
@@ -405,8 +442,8 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
     axes.set_title(title, fontsize=35)
     if ylim is not None:
         axes.set_ylim(*ylim)
-    axes.set_xlabel("Training examples", fontsize=25)
-    axes.set_ylabel("Score", fontsize=25)
+    axes.set_xlabel("Training examples", fontsize=20)
+    axes.set_ylabel("Score", fontsize=20)
 
     train_sizes, train_scores, test_scores = \
         learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
@@ -434,7 +471,8 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
     axes.tick_params(axis='x', labelsize=16)
     axes.tick_params(axis='y', labelsize=16)
     
-    return plt, train_scores_mean, test_scores_mean
+    return plt, train_scores_mean, test_scores_mean, train_scores_std,  test_scores_std, test_scores
+
 
 
 fig,axes = plt.subplots(1, 4, figsize=(20, 25))
@@ -457,6 +495,7 @@ title3 = "Learning Curve KNN"
 
 plot_learning_curve(text_clf_KNN, title3, X_train, y=Y_train, axes=axes[2], ylim=(0.6, 1.01),
                     cv=cv_KNN, n_jobs=4)
+
 title4 = "Learning Curve MLP"
 
 plot_learning_curve(text_clf_MLP, title4, X_train, y=Y_train, axes=axes[3], ylim=(0.6, 1.01),
@@ -477,6 +516,7 @@ plt.show()
 
 
 from sklearn.metrics import f1_score, precision_score, recall_score
+from sklearn.ensemble import VotingClassifier
 
 def pred_probs(classifier):
     
@@ -484,9 +524,10 @@ def pred_probs(classifier):
     pred_proba = classifier.fit(X_train, Y_train)
     
     if classifier == text_clf_SVM:
-        pred_proba = pred_proba.decision_function(test_set)
+         pred_proba = pred_proba.decision_function(test_set)
     else:
-        pred_proba = pred_proba.predict_proba(test_set)
+         pred_proba = pred_proba.predict_proba(test_set)
+    
     return pred_proba
 
 
@@ -495,14 +536,18 @@ def prediction(classifier):
     
     new_pred =[]
     case = 0
+    
     if classifier == text_clf_SVM:
         for value in pred_probs(classifier): 
-            if value >= 0.8 or value <= -0.8:
+            
+            if value >= 0.93 or value <= -0.93:
                    pred = classifier.fit(X_train, Y_train).predict([test_set[case]])
+        
             else:
                 pred = (["No sufficient similarity to trained cases"])
             case += 1
             new_pred.extend(pred)
+    
     else:
         for pairs in pred_probs(classifier): 
             if max(pairs) >= 0.998: #threshold parameter, must be at least 99,8% confident for prediction
@@ -511,74 +556,85 @@ def prediction(classifier):
                 pred = (["No sufficient similarity to trained cases"])
             case += 1
             new_pred.extend(pred)
-            
+           
     return new_pred
 
-NB = prediction(text_clf_NB)
 SVM = prediction(text_clf_SVM)
+NB = prediction(text_clf_NB)
 KNN = prediction(text_clf_KNN)
 MLP = prediction(text_clf_MLP)
 
-#NB
-#KNN
-#MLP
-#SVM
-#test_diagnose
-#len(text_clf_MLP.fit(X_train, Y_train).predict_proba(test_set))
 
+print('\nSVM_PRECISION: ', precision_score(SVM, test_diagnose, average='macro'))
+print('SVM_RECALL: ', recall_score(SVM, test_diagnose, average='macro'))
+print('SVM_F1: ', (2*precision_score(SVM, test_diagnose, average='macro')*recall_score(SVM, test_diagnose, average='macro'))/(precision_score(SVM, test_diagnose, average='macro')+recall_score(SVM, test_diagnose, average='macro')))
 
 
 print('\nNB_PRECISION: ', precision_score(NB, test_diagnose, average='macro'))
 print('NB_RECALL: ', recall_score(NB, test_diagnose, average='macro'))
-print('NB_F1: ', f1_score(NB, test_diagnose, average='macro'))
+print('NB_F1: ', (2*precision_score(NB, test_diagnose, average='macro')*recall_score(NB, test_diagnose, average='macro'))/(precision_score(NB, test_diagnose, average='macro')+recall_score(NB, test_diagnose, average='macro')))
 
-print('\nSVM_PRECISION: ', precision_score(SVM, test_diagnose, average='macro'))
-print('SVM_RECALL: ', recall_score(SVM, test_diagnose, average='macro'))
-print('SVM_F1: ', f1_score(SVM, test_diagnose, average='macro'))
 
 print('\nKNN_PRECISION: ', precision_score(KNN, test_diagnose, average='macro'))
 print('KNN_RECALL: ', recall_score(KNN, test_diagnose, average='macro'))
-print('KNN_F1: ', f1_score(KNN, test_diagnose, average='macro'))
+print('KNN_F1: ', (2*precision_score(KNN, test_diagnose, average='macro')*recall_score(KNN, test_diagnose, average='macro'))/(precision_score(KNN, test_diagnose, average='macro')+recall_score(KNN, test_diagnose, average='macro')))
+
 
 print('\nMLP_PRECISION: ', precision_score(MLP, test_diagnose, average='macro'))
 print('MLP_RECALL: ', recall_score(MLP, test_diagnose, average='macro'))
-print('MLP_F1: ', f1_score(MLP, test_diagnose, average='macro'))
-
+print('MLP_F1: ', (2*precision_score(MLP, test_diagnose, average='macro')*recall_score(MLP, test_diagnose, average='macro'))/(precision_score(MLP, test_diagnose, average='macro')+recall_score(MLP, test_diagnose, average='macro')))
 
 
 
 # prediction validation just for test cases with trained label
 
-
-pred_NB = text_clf_NB.fit(X_train, Y_train).predict(X_test)
 pred_SVM = text_clf_SVM.fit(X_train, Y_train).predict(X_test)
+pred_NB = text_clf_NB.fit(X_train, Y_train).predict(X_test)
 pred_KNN = text_clf_KNN.fit(X_train, Y_train).predict(X_test)
 pred_MLP = text_clf_MLP.fit(X_train, Y_train).predict(X_test)
 
 
-print('\nNB_PRECISION: ', precision_score(pred_NB, Y_test, average='macro'))
-print('NB_RECALL: ', recall_score(pred_NB, Y_test, average='macro'))
-print('NB_F1: ', f1_score(pred_NB, Y_test, average='macro'))
-
 print('\nSVM_PRECISION: ', precision_score(pred_SVM, Y_test, average='macro'))
 print('SVM_RECALL: ', recall_score(pred_SVM, Y_test, average='macro'))
-print('SVM_F1: ', f1_score(pred_SVM, Y_test, average='macro'))
+print('SVM_F1: ', (2*precision_score(pred_SVM, Y_test, average='macro')*recall_score(pred_SVM, Y_test, average='macro'))/(precision_score(pred_SVM, Y_test, average='macro')+recall_score(pred_SVM, Y_test, average='macro')))
+
+
+print('\nNB_PRECISION: ', precision_score(pred_NB, Y_test, average='macro'))
+print('NB_RECALL: ', recall_score(pred_NB, Y_test, average='macro'))
+print('NB_F1: ', (2*precision_score(pred_NB, Y_test, average='macro')*recall_score(pred_NB, Y_test, average='macro'))/(precision_score(pred_NB, Y_test, average='macro')+recall_score(pred_NB, Y_test, average='macro')))
+
 
 print('\nKNN_PRECISION: ', precision_score(pred_KNN, Y_test, average='macro'))
 print('KNN_RECALL: ', recall_score(pred_KNN, Y_test, average='macro'))
-print('KNN_F1: ', f1_score(pred_KNN, Y_test, average='macro'))
+print('KNN_F1: ', (2*precision_score(pred_KNN, Y_test, average='macro')*recall_score(pred_KNN, Y_test, average='macro'))/(precision_score(pred_KNN, Y_test, average='macro')+recall_score(pred_KNN, Y_test, average='macro')))
+
 
 print('\nMLP_PRECISION: ', precision_score(pred_MLP, Y_test, average='macro'))
 print('MLP_RECALL: ', recall_score(pred_MLP, Y_test, average='macro'))
-print('MLP_F1: ', f1_score(pred_KNN, Y_test, average='macro'))
-    
+print('MLP_F1: ', (2*precision_score(pred_MLP, Y_test, average='macro')*recall_score(pred_MLP, Y_test, average='macro'))/(precision_score(pred_MLP, Y_test, average='macro')+recall_score(pred_MLP, Y_test, average='macro')))
+
+
+
+
+
+
+'''
+
+8. wordclouds
+
+'''
+
+
+
+
+
     
 # WordCloud with tf idf
     
     
 import matplotlib.pyplot as plt 
 from sklearn.feature_extraction.text import TfidfVectorizer
-from wordcloud import WordCloud, ImageColorGenerator
+from wordcloud import WordCloud
 
 
 german_stop_words_to_use.extend(['ja', 'nein', 'gutem', 'empfehlen', 'habe', 'ambulanz', 'telefon', 'durchgefuehrt', 'ausgang',
