@@ -397,7 +397,7 @@ f1_MLP = [(2*x*y)/(x+y) for x,y in zip(scores_MLP['test_precision_macro'],scores
 
 results, names = [f1_SVM, f1_NB,f1_KNN,f1_MLP],["SVM", "NB", "KNN", "MLP"]
 
-white_diamond = {"markerfacecolor":'w', "marker":'D'}
+white_diamond = {"markerfacecolor":'w', "marker":'o', "markersize":15}
 bp = plt.boxplot(results, labels=names, showmeans=True, patch_artist = True, flierprops=white_diamond, notch = True, meanline = True)
 colors = ['#00BFFF', '#FF4040',  
           '#FFFF10', '#F0FFF0'] 
@@ -411,13 +411,12 @@ for median in bp['medians']:
 for mean in bp['means']:
     mean.set(linewidth = 6, linestyle =":")
 
-plt.tick_params(axis='x', labelsize=30)
-plt.tick_params(axis='y', labelsize=30)
-plt.xlabel("Klassifikator", fontsize=40)
-plt.ylabel("F1-Score", fontsize=40)  
+plt.tick_params(axis='x', labelsize=40)
+plt.tick_params(axis='y', labelsize=40)
+plt.xlabel("Klassifikator", fontsize=50, labelpad = 25)
+plt.ylabel("F1-Score", fontsize=50, labelpad = 25)  
 
 plt.show()
-
 
 
 '''
@@ -427,10 +426,7 @@ plt.show()
 
 '''
 
-
-
-
-
+import matplotlib.pyplot as plt 
 from sklearn.model_selection import learning_curve
 
 
@@ -442,8 +438,10 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
     axes.set_title(title, fontsize=35)
     if ylim is not None:
         axes.set_ylim(*ylim)
-    axes.set_xlabel("Training examples", fontsize=20)
-    axes.set_ylabel("Score", fontsize=20)
+    if title is title1:   
+        axes.set_ylabel("F1-Score", fontsize=30, labelpad = 25)
+    axes.set_xlabel("Training examples", fontsize=30,labelpad = 25)
+    
 
     train_sizes, train_scores, test_scores = \
         learning_curve(estimator, X, y, cv=cv, n_jobs=n_jobs,
@@ -462,14 +460,14 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
     axes.fill_between(train_sizes, test_scores_mean - test_scores_std,
                          test_scores_mean + test_scores_std, alpha=0.1,
                          color="g")
-    axes.plot(train_sizes, train_scores_mean, 'o-', color="r",
+    axes.plot(train_sizes, train_scores_mean, 'o-', color="r", markersize=20,
                  label="Training score")
-    axes.plot(train_sizes, test_scores_mean, 'o-', color="g",
+    axes.plot(train_sizes, test_scores_mean, '^-', color="g", markersize=20,
                  label="Cross-validation score")
-    axes.legend(loc="lower right", fontsize=20)
+    axes.legend(loc="lower right", fontsize=30)
     
-    axes.tick_params(axis='x', labelsize=16)
-    axes.tick_params(axis='y', labelsize=16)
+    axes.tick_params(axis='x', labelsize=30)
+    axes.tick_params(axis='y', labelsize=30)
     
     return plt, train_scores_mean, test_scores_mean, train_scores_std,  test_scores_std, test_scores
 
@@ -477,26 +475,26 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None,
 
 fig,axes = plt.subplots(1, 4, figsize=(20, 25))
 
-title1 = "Learning Curve SVM"
+title1 = "SVM"
 
 plot_learning_curve(text_clf_SVM, title1, X_train, y=Y_train, axes=axes[0], ylim=(0.6, 1.01),
                     cv=cv_SVM, n_jobs=4)
 
 
 
-title2 = "Learning Curve NB"
+title2 = "NB"
 
 plot_learning_curve(text_clf_NB, title2, X_train, y=Y_train, axes=axes[1], ylim=(0.6, 1.01),
                     cv=cv_NB, n_jobs=4)
 
 
 
-title3 = "Learning Curve KNN"
+title3 = "KNN"
 
 plot_learning_curve(text_clf_KNN, title3, X_train, y=Y_train, axes=axes[2], ylim=(0.6, 1.01),
                     cv=cv_KNN, n_jobs=4)
 
-title4 = "Learning Curve MLP"
+title4 = "MLP"
 
 plot_learning_curve(text_clf_MLP, title4, X_train, y=Y_train, axes=axes[3], ylim=(0.6, 1.01),
                     cv=cv_MLP, n_jobs=4)
@@ -504,8 +502,6 @@ plot_learning_curve(text_clf_MLP, title4, X_train, y=Y_train, axes=axes[3], ylim
 
 
 plt.show()
-
-
 
 
 '''
