@@ -633,12 +633,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from wordcloud import WordCloud
 
 
-german_stop_words_to_use.extend(['ja', 'nein', 'gutem', 'empfehlen', 'habe', 'ambulanz', 'telefon', 'durchgefuehrt', 'ausgang',
-                            'soll', 'unter', 'weitere', 'erfolgte', 'vorstellung', 'sowie', 'ohne', 'heute', 'vergleich',
-                            'war', 'sollte', 'hier', 'eingang', 'auch', 'durch', 'stueck', 'da', 'weiteren', 'bzw', 'zeigte',
-                            'arztbrief', 'patienten', 'aufnahme', 'untersuchung', 'erfolgt', 'wurde', 'patient', 'patientin', 'ca', 'seit', 'verlauf'])
-
-
 vectorizer = TfidfVectorizer(sublinear_tf=True,
                         min_df=4, max_df = 0.97, norm='l2',
                         encoding='latin-1',
