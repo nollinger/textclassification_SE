@@ -98,7 +98,7 @@ german_stop_words_to_use.extend(['sarkoidose', 'zystische',
 
 # tokenize data: (1, 1) means only unigrams, (1, 2) means unigrams and bigrams, and (2, 2) means only bigrams
 vects_SVM = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), min_df=0.01, max_df=0.5)  
-vects_NB = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), max_df=0.5, min_df=0.0) 
+vects_NB = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1),  min_df=0.0, max_df=0.5) 
 vects_KNN = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), min_df=0.01, max_df=0.8) 
 vects_MLP = CountVectorizer(stop_words=german_stop_words_to_use, ngram_range=(1, 1), min_df=0.02, max_df=0.8) 
 
